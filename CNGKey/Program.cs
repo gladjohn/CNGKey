@@ -15,13 +15,15 @@ namespace CNGKey
         static void Main(string[] args)
         {
             //grant acess to the crypto path 
-            var FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), @"Microsoft\Crypto\Keys");
+            var folderName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), @"Microsoft\Crypto\Keys");
+
+            SetFullControlPermissionsToEveryone(folderName);
 
             // Add the access control entry to the file.
             // Before compiling this snippet, change MyDomain to your
             // domain name and MyAccessAccount to the name
             // you use to access your domain.
-            AddFileSecurity(FileName, @"redmond\gljohns", FileSystemRights.ReadData, AccessControlType.Allow);
+            //AddFileSecurity(FileName, @"redmond\gljohns", FileSystemRights.ReadData, AccessControlType.Allow);
 
             //Creates a key with a certificate 
             CreateKey();
@@ -198,6 +200,59 @@ namespace CNGKey
 
             // Set the new access settings.
             fInfo.SetAccessControl(fSecurity);
+        }
+
+        static void SetFullControlPermissionsToEveryone(string path)
+        {
+            Console.WriteLine("SetFullControlPermissionsToEveryone");
+
+            try
+            {
+                const FileSystemRights rights = FileSystemRights.FullControl;
+
+                var allUsers = new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null);
+
+                // Add Access Rule to the actual directory itself
+                var accessRule = new FileSystemAccessRule(
+                    allUsers,
+                    rights,
+                    InheritanceFlags.None,
+                    PropagationFlags.NoPropagateInherit,
+                    AccessControlType.Allow);
+
+                var info = new DirectoryInfo(path);
+                var security = info.GetAccessControl(AccessControlSections.Access);
+
+                bool result;
+                security.ModifyAccessRule(AccessControlModification.Set, accessRule, out result);
+
+                if (!result)
+                {
+                    throw new InvalidOperationException("Failed to give full-control permission to all users for path " + path);
+                }
+
+                // add inheritance
+                var inheritedAccessRule = new FileSystemAccessRule(
+                    allUsers,
+                    rights,
+                    InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                    PropagationFlags.InheritOnly,
+                    AccessControlType.Allow);
+
+                bool inheritedResult;
+                security.ModifyAccessRule(AccessControlModification.Add, inheritedAccessRule, out inheritedResult);
+
+                if (!inheritedResult)
+                {
+                    throw new InvalidOperationException("Failed to give full-control permission inheritance to all users for " + path);
+                }
+
+                info.SetAccessControl(security);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
         }
     }
 }
