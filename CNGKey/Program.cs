@@ -1,20 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Linq;
+using System;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using System.Security.Principal;
+using System.IO;
+
 
 namespace CNGKey
 {
     internal class Program
     {
-        private const CngKeyCreationOptions UseArchivableKey = (CngKeyCreationOptions)0x00020000;
+
 
         static void Main(string[] args)
         {
+            //grant acess to the crypto path 
+            var FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), @"Microsoft\Crypto\Keys");
+
+            // Add the access control entry to the file.
+            // Before compiling this snippet, change MyDomain to your
+            // domain name and MyAccessAccount to the name
+            // you use to access your domain.
+            AddFileSecurity(FileName, @"redmond\gljohns", FileSystemRights.ReadData, AccessControlType.Allow);
 
             //Creates a key with a certificate 
             CreateKey();
@@ -153,6 +160,44 @@ namespace CNGKey
         static bool ByteArrayAreTheSame(ReadOnlySpan<byte> a1, ReadOnlySpan<byte> a2)
         {
             return a1.SequenceEqual(a2);
+        }
+
+        // Adds an ACL entry on the specified file for the specified account.
+        public static void AddFileSecurity(string FileName, string Account, FileSystemRights Rights, AccessControlType ControlType)
+        {
+            // Create a new FileInfo object.
+            FileInfo fInfo = new FileInfo(FileName);
+
+            // Get a FileSecurity object that represents the
+            // current security settings.
+            FileSecurity fSecurity = fInfo.GetAccessControl();
+
+            // Add the FileSystemAccessRule to the security settings.
+            fSecurity.AddAccessRule(new FileSystemAccessRule(Account,
+                                                            Rights,
+                                                            ControlType));
+
+            // Set the new access settings.
+            fInfo.SetAccessControl(fSecurity);
+        }
+
+        // Removes an ACL entry on the specified file for the specified account.
+        public static void RemoveFileSecurity(string FileName, string Account, FileSystemRights Rights, AccessControlType ControlType)
+        {
+            // Create a new FileInfo object.
+            FileInfo fInfo = new FileInfo(FileName);
+
+            // Get a FileSecurity object that represents the
+            // current security settings.
+            FileSecurity fSecurity = fInfo.GetAccessControl();
+
+            // Add the FileSystemAccessRule to the security settings.
+            fSecurity.RemoveAccessRule(new FileSystemAccessRule(Account,
+                                                            Rights,
+                                                            ControlType));
+
+            // Set the new access settings.
+            fInfo.SetAccessControl(fSecurity);
         }
     }
 }
